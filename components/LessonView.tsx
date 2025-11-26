@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { generateLesson } from '../services/geminiService';
-import { LessonContent, Topic } from '../types';
+import { LessonContent, Topic, Mistake } from '../types';
 
 interface LessonViewProps {
   topic: Topic;
+  masterEmail: string; // Received from App state
   onComplete: (score: number) => void;
   onBack: () => void;
 }
 
-const LessonView: React.FC<LessonViewProps> = ({ topic, onComplete, onBack }) => {
+const LessonView: React.FC<LessonViewProps> = ({ topic, masterEmail, onComplete, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState<LessonContent | null>(null);
   const [currentStep, setCurrentStep] = useState<'theory' | 'quiz' | 'results'>('theory');
@@ -17,6 +18,9 @@ const LessonView: React.FC<LessonViewProps> = ({ topic, onComplete, onBack }) =>
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // Track specific mistakes
+  const [mistakes, setMistakes] = useState<Mistake[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,6 +55,31 @@ const LessonView: React.FC<LessonViewProps> = ({ topic, onComplete, onBack }) =>
       utterance.rate = 0.9;
       window.speechSynthesis.speak(utterance);
     }
+  };
+
+  const handleSendMistakeReport = () => {
+    if (!masterEmail) {
+      alert("Nessuna email Master configurata nel Profilo.");
+      return;
+    }
+
+    const subject = `Report Errori: ${topic.title} - ${new Date().toLocaleDateString()}`;
+    let body = `Ciao,\n\nEcco il report del quiz su "${topic.title}".\n`;
+    body += `Punteggio: ${score}/${content?.quiz.length}\n\n`;
+    
+    if (mistakes.length === 0) {
+      body += "Nessun errore commesso! Ottimo lavoro! 🎉";
+    } else {
+      body += "ERRORI COMMESSI:\n------------------\n";
+      mistakes.forEach((m, i) => {
+        body += `${i + 1}) DOMANDA: ${m.question}\n`;
+        body += `   ❌ Risposta data: ${m.userAnswer}\n`;
+        body += `   ✅ Risposta corretta: ${m.correctAnswer}\n`;
+        body += `   ℹ️ Spiegazione: ${m.explanation}\n\n`;
+      });
+    }
+
+    window.location.href = `mailto:${masterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   if (loading) {
@@ -164,8 +193,17 @@ const LessonView: React.FC<LessonViewProps> = ({ topic, onComplete, onBack }) =>
       if (selectedOption !== null) return;
       setSelectedOption(index);
       setShowExplanation(true);
+      
       if (index === question.correctAnswerIndex) {
         setScore(s => s + 1);
+      } else {
+        // Track mistake
+        setMistakes(prev => [...prev, {
+          question: question.question,
+          userAnswer: question.options[index],
+          correctAnswer: question.options[question.correctAnswerIndex],
+          explanation: question.explanation
+        }]);
       }
     };
 
@@ -269,6 +307,15 @@ const LessonView: React.FC<LessonViewProps> = ({ topic, onComplete, onBack }) =>
           <span className="text-slate-600 text-3xl">/{content.quiz.length}</span>
         </p>
       </div>
+
+      {masterEmail && mistakes.length > 0 && (
+        <button 
+          onClick={handleSendMistakeReport}
+          className="w-full py-3 mb-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-200 transition-all shadow-md flex items-center justify-center gap-2"
+        >
+          <span>📧</span> Invia Report Errori al Master
+        </button>
+      )}
       
       <button 
         onClick={() => onComplete(score)}

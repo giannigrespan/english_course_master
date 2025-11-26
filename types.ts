@@ -40,3 +40,10 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
 }
+
+export interface Mistake {
+  question: string;
+  userAnswer: string;
+  correctAnswer: string;
+  explanation: string;
+}

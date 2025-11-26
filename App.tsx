@@ -138,7 +138,7 @@ LinguaQuest App`;
             onClick={sendReport}
             className="w-full py-3 bg-white text-indigo-900 font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
           >
-            <span>📤</span> Invia Report Ora
+            <span>📤</span> Invia Report Generale
           </button>
         </div>
       </div>
@@ -310,6 +310,7 @@ LinguaQuest App`;
         {view === AppView.LESSON && selectedTopic && (
           <LessonView 
             topic={selectedTopic} 
+            masterEmail={masterEmail}
             onComplete={handleCompleteLesson}
             onBack={() => setView(AppView.DASHBOARD)}
           />
